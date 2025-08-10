@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      PYTHON_API_URL: "http://python_service:5000"
+    depends_on:
+      - python_service
+
+  python_service:
+    build: ./python_service
+    ports:
+      - "5000:5000"
