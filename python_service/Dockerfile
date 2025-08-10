@@ -23,5 +23,8 @@ COPY . .
 # Expose FastAPI port
 EXPOSE 5000
 
+# Set working directory
+WORKDIR /app/app
+
 # Start FastAPI server
-CMD ["uvicorn", "rdkit_service:app", "--host" , "0.0.0.0", "--port", "5000"]
+CMD ["uvicorn", "main:app", "--host" , "0.0.0.0", "--port", "5000"]
