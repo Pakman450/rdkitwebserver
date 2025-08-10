@@ -5,6 +5,9 @@ const express = require('express');
 const getFormula = require ('./services/pythonService.js')
 const app = express();
 
+
+
+
 app.get('/formula', async (req, res) => {
     const smiles = req.query.smiles || "CCO"; // ethanol
 
@@ -18,3 +21,4 @@ app.get('/formula', async (req, res) => {
 
 app.listen(3000, () => console.log('Express listening on port 3000'));
 
+module.exports = app
