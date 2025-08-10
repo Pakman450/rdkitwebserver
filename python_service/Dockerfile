@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade pip
+
 # Set working directory
 WORKDIR /app
 
@@ -22,4 +24,4 @@ COPY . .
 EXPOSE 5000
 
 # Start FastAPI server
-CMD ["uvicorn", "rdkit_service:app", "--port", "5000"]
+CMD ["uvicorn", "rdkit_service:app", "--host" , "0.0.0.0", "--port", "5000"]
