@@ -1,18 +1,17 @@
-
 const express = require("express")
 const router = express.Router()
 
 const {
-    getFormula
+    getQED
 
 }= require ('../services/pythonService.js')
 
 
-router.get('/get_formula', async (req, res) => {
+router.get('/getQED', async (req, res) => {
     const smiles = req.query.smiles || "CCO"; // ethanol
 
     try {
-        const response = await getFormula(smiles)
+        const response = await getQED(smiles)
 
         console.log(res.body)
 

@@ -10,10 +10,18 @@ async function getFormula(smiles) {
 }
 
 async function getQED(smiles) {
-    const url = `${process.env.PYTHON_API_URL}/calc_qed?smiles=${encodeURIComponent(smiles)}`;
+    const url = `${process.env.PYTHON_API_URL}/v1/calc_qed?smiles=${encodeURIComponent(smiles)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Python API error: ${res.status}`);
     return res.json();
 }
 
-module.exports = { getFormula , getQED }
+async function calcDescriptors(smiles) {
+    const url = `${process.env.PYTHON_API_URL}/v1/descriptors?smiles=${encodeURIComponent(smiles)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Python API error: ${res.status}`);
+    return res.json();
+}
+
+
+module.exports = { getFormula , getQED, calcDescriptors }

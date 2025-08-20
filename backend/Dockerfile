@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 3000
 
 # Start Express server
-CMD ["node", "server.js"]
+CMD ["node", "index.js"]
