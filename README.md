@@ -25,3 +25,15 @@ python backend to start up the docker containers
 ```
 docker compose up --build
 ```
+
+### to start development mode
+for python service
+``` 
+cd python_service/app && uvicorn main:app --host 0.0.0.0 --port 5000 
+```
+
+
+for express
+``` 
+cd backend && nodemon index.js
+```
