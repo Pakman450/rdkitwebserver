@@ -10,12 +10,12 @@ const {
 
 router.get('/descriptors', async (req, res) => {
 
-    const smiles = req.query.smiles || "CCCCCC"; // ethanol
+    const smiles = req.query.smiles || ["CCCCCC"]; // ethanol
 
     try {
         const response = await calcDescriptors(smiles)
 
-        console.log(Object.keys(response))
+        console.log("Success descriptors")
 
         res.json(response);
     } catch (err) {
