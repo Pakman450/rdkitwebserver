@@ -13,9 +13,12 @@ RESULTS_DIR.mkdir(exist_ok=True)
 
 @app.post("/v1/descriptors")
 async def submit_descriptors_job(file: UploadFile = File(...)):
+
+    #read in smiles file
     contents = await file.read()
     smiles_list = contents.decode("utf-8").splitlines()
 
+    # Create job id and chunkify smiles file
     job_id = str(uuid.uuid4())
     chunks = [smiles_list[i:i + CHUNK_SIZE] for i in range(0, len(smiles_list), CHUNK_SIZE)]
 
@@ -26,6 +29,7 @@ async def submit_descriptors_job(file: UploadFile = File(...)):
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
 
     # Use chord: merge_chunks runs after all chunk tasks finish
+    # first argument of merge_chunks is injected automatically by chord(arg)
     job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
 
     return {"job_id": job_id, "num_chunks": len(chunks)}
