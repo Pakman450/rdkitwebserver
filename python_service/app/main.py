@@ -1,32 +1,28 @@
-from fastapi import FastAPI, Query
-from rdkit import Chem
-from rdkit.Chem.rdMolDescriptors import CalcMolFormula
-import descriptors.qed as qed
-import descriptors.all_descriptors as all_ds
-
-
-#Types
-from typing import List
+from fastapi import FastAPI, UploadFile, File
+from celery_worker import calculate_descriptors_task, celery_app
+from celery.result import AsyncResult
 
 app = FastAPI()
 
-@app.get("/smiles_to_mol")
-def smiles_to_mol(smiles: str):
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
-        return {"error": "Invalid SMILES"}
-    formula = CalcMolFormula(mol)
-    return {"formula": formula}
+# Submit a file for descriptor calculation
+@app.post("/v1/descriptors")
+async def submit_descriptors_job(file: UploadFile = File(...)):
+    contents = await file.read()
+    smiles_list = contents.decode("utf-8").splitlines()
+    
+    # Enqueue the job
+    job = calculate_descriptors_task.delay(smiles_list)
+    
+    return {"job_id": job.id}
 
-
-@app.get("/v1/calc_qed")
-def calc_qed(smiles: str):
-    return qed.calc_qed(smiles)
-
-@app.get("/v1/descriptors")
-def calc_descriptors(smiles: List[str] = Query(...)) -> List:
-    print(smiles)
-    return all_ds.calc_all_descriptors(smiles)
-
-
-
+# Check the status of a job
+@app.get("/v1/descriptors/{job_id}")
+def get_job_status(job_id: str):
+    job = AsyncResult(job_id, app=celery_app)
+    if job.state == "PENDING":
+        return {"status": "pending"}
+    elif job.state == "SUCCESS":
+        return {"status": "done", "result": job.result}
+    elif job.state == "FAILURE":
+        return {"status": "failed", "error": str(job.result)}
+    return {"status": job.state}
