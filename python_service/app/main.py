@@ -1,38 +1,46 @@
+# app/main.py
 from fastapi import FastAPI, UploadFile, File
-from celery_worker import calculate_descriptors_task, celery_app
-from celery.result import AsyncResult
-import json
+from celery_worker import calculate_descriptors_chunk, merge_chunks, celery_app
+from celery import chord
 from pathlib import Path
+import uuid
 
 app = FastAPI()
+
+CHUNK_SIZE = 5
+RESULTS_DIR = Path("./results")
+RESULTS_DIR.mkdir(exist_ok=True)
 
 @app.post("/v1/descriptors")
 async def submit_descriptors_job(file: UploadFile = File(...)):
     contents = await file.read()
     smiles_list = contents.decode("utf-8").splitlines()
-    
-    # Enqueue the task
-    job = calculate_descriptors_task.delay(smiles_list)
-    
-    return {"job_id": job.id}
+
+    job_id = str(uuid.uuid4())
+    chunks = [smiles_list[i:i + CHUNK_SIZE] for i in range(0, len(smiles_list), CHUNK_SIZE)]
+
+    # Create tasks for each chunk
+    chunk_tasks = [calculate_descriptors_chunk.s(chunk, job_id=job_id) for chunk in chunks]
+
+    # Define path for final merged file
+    merged_file = RESULTS_DIR / f"{job_id}_merged.json"
+
+    # Use chord: merge_chunks runs after all chunk tasks finish
+    job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
+
+    return {"job_id": job_id, "num_chunks": len(chunks)}
+
 
 @app.get("/v1/descriptors/{job_id}")
 def get_job_status(job_id: str):
-    job = AsyncResult(job_id, app=celery_app)
+    merged_file = RESULTS_DIR / f"{job_id}_merged.json"
     
-    if job.state == "PENDING":
-        return {"status": "pending"}
-    elif job.state == "FAILURE":
-        return {"status": "failed", "error": str(job.result)}
-    elif job.state == "SUCCESS":
-        # job.result is the file path
-        file_path = Path(job.result)
-        if file_path.exists():
-            # Optional: return content or just path
-            with open(file_path) as f:
-                result = json.load(f)
-            return {"status": "done", "result": result}
-        else:
-            return {"status": "done", "result": None, "warning": "file missing"}
+    # Check if merge task result exists in Celery backend
+    # Find the chord result if needed
+    if merged_file.exists():
+        return {"status": "done", "merged_file": str(merged_file)}
     
-    return {"status": job.state}
+    # Otherwise, check pending chunk tasks
+    # Celery stores task states in backend
+    # This is optional; for simplicity, we just check if merged file exists
+    return {"status": "pending"}

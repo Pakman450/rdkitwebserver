@@ -1,3 +1,4 @@
+# app/celery_worker.py
 import uuid
 from pathlib import Path
 import json
@@ -17,14 +18,26 @@ RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
 @celery_app.task
-def calculate_descriptors_task(smiles_list):
-    # Calculate descriptors in memory
-    result = all_ds.calc_all_descriptors(smiles_list)
-    
-    # Write result to disk
-    out_file = RESULTS_DIR / f"{uuid.uuid4()}.json"
-    with open(out_file, "w") as f:
+def calculate_descriptors_chunk(smiles_chunk, job_id=None):
+    """
+    Calculate descriptors for a chunk of SMILES and save JSON.
+    """
+    result = all_ds.calc_all_descriptors(smiles_chunk)
+    chunk_file = RESULTS_DIR / f"{job_id}_{uuid.uuid4()}.json"
+    with open(chunk_file, "w") as f:
         json.dump(result, f)
-    
-    # Return file path as result
-    return str(out_file)
+    return str(chunk_file)
+
+
+@celery_app.task
+def merge_chunks(chunk_files, merged_file):
+    """
+    Merge multiple JSON chunk files into a single JSON.
+    """
+    combined = []
+    for fpath in chunk_files:
+        with open(fpath) as f:
+            combined.extend(json.load(f))
+    with open(merged_file, "w") as f:
+        json.dump(combined, f)
+    return str(merged_file)
