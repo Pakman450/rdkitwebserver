@@ -6,10 +6,8 @@ from typing import List
 
 
 def calc_all_descriptors(smiles: List[str]):
-    # Your molecule (example: aspirin)
 
     desc_list = []
-
 
     for smi in smiles:
 
