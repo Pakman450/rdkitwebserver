@@ -4,8 +4,11 @@ from main import app
 from fastapi.testclient import TestClient
 
 import json
+from typing import List
 
-from lib.celery_worker import celery_app, calculate_descriptors_chunk
+from lib.celery_worker import celery_app, \
+                              calculate_descriptors_chunk_smi, \
+                              calculate_descriptors_chunk_sdf
 celery_app.conf.update(
     task_always_eager=True,
     task_eager_propagates=True  # propagate exceptions to the test
@@ -16,23 +19,31 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def sample_file():
+def sample_file_smi():
     with open("./examples/smiles.txt", "r") as f:
         data = f.readlines()  # read entire file as a single string
     
     lines = [line.rstrip("\n") for line in data] 
     return lines  # encode to bytes
 
+@pytest.fixture
+def sample_file_sdf():
+    with open("./examples/short_structures.sdf", "r") as f:
+        data = f.read()  # read entire file as one string
 
+    # Split into molecule blocks at "$$$$"
+    blocks = data.split("$$$$")
 
-def test_calculate_descriptors_chunk(sample_file):
+    # Strip empty blocks and whitespace
+    blocks = [block.strip() for block in blocks if block.strip()]
+
+    return blocks
+
+def test_calculate_descriptors_chunk_smi(sample_file_smi: List[str]):
     
-    l_smiles = []
-    for mol in sample_file:
-        l_smiles.append(mol)
 
     # run the task synchronously
-    result = calculate_descriptors_chunk(l_smiles)
+    result = calculate_descriptors_chunk_smi(sample_file_smi)
 
     # reading in the made json file
     proccessed_lines = []
@@ -46,3 +57,24 @@ def test_calculate_descriptors_chunk(sample_file):
         assert len(proccessed_lines[i].keys()) == 217
 
 
+def test_calculate_descriptors_chunk_sdf(sample_file_sdf: List[str]):
+
+    # check if there are three blocks
+    assert len(sample_file_sdf) == 3
+
+    # run the task synchronously
+    result = calculate_descriptors_chunk_sdf(sample_file_sdf)
+
+    # reading in the made json file
+    proccessed_json= []
+    with open(f"./{result}","r") as f:
+        proccessed_json = json.load(f)
+    
+    print(proccessed_json)
+    assert "json" in result and "None" in result
+    assert len(proccessed_json) == 3
+
+    for i,line in enumerate(proccessed_json):
+        assert len(proccessed_json[i].keys()) == 217
+
+    assert proccessed_json[1]['qed'] == 0.010267024043949413
