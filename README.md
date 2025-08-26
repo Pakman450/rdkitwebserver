@@ -29,13 +29,20 @@ docker compose up --build
 ### to start development mode
 for python service
 ``` 
-cd python_service/app && uvicorn main:app --host 0.0.0.0 --port 5000 
+cd python_service && uvicorn main:app --host 0.0.0.0 --port 5000 
+```
+
+for celery
+```
+cd python_service && celery -A lib.celery_worker worker --loglevel=info
 ```
 
 for express
 ``` 
 cd backend && nodemon index.js
 ```
+
+
 
 ## python backend
 ### to develop
@@ -51,18 +58,18 @@ sudo systemctl status redis-server
 
 Then, start the fastapi app by using uvicorn
 ```
-cd python_server/app && uvicorn main:app --reload
+cd python_server && uvicorn main:app --reload
 ```
 
 Also, you have to keep celery on too
 ```
-cd python_server/app && celery -A celery_worker.celery_app worker --loglevel=info
+cd python_service && celery -A lib.celery_worker worker --loglevel=info
 ```
 
 if you run:
 
 ```
-cd python_server/app/examples && curl -X POST "http://localhost:8000/v1/descriptors" -F "file=@smiles.txt"
+cd python_server/app/examples && curl -X POST "http://localhost:8000/v1/smi/descriptors" -F "file=@smiles.txt"
 ```
 
 you will get a job id back. The job will run in the background, where
@@ -71,7 +78,7 @@ the celery worker will do the work.
 You can see the status of the job by doing:
 
 ```
-curl "http://localhost:8000/v1/descriptors/JOBID"
+curl "http://localhost:8000/v1/job/JOBID"
 ```
 
 where if completed, will return results
