@@ -3,4 +3,4 @@ venv
 __pycache__
 *.__pycache__
 .env
-python_service/app/results
+python_service/results
