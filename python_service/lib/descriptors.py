@@ -30,8 +30,11 @@ def calc_all_descriptors_sdf(l_sdf: List[str]):
 
     desc_list = []
 
-    for m in l_sdf:
+    for i,m in enumerate(l_sdf):
+
         mol = Chem.MolFromMolBlock(m)
+        if mol is None:
+            print(f"Block {i} failed")
 
         # Calculate all descriptors
         all_desc = {}

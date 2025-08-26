@@ -37,7 +37,7 @@ def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
     result = all_ds.calc_all_descriptors_sdf(sdf_chunk)
     chunk_file = RESULTS_DIR / f"{job_id}_{uuid.uuid4()}.json"
     with open(chunk_file, "w") as f:
-        json.dump(result, f)
+        json.dump(result, f,indent=2)
     return str(chunk_file)
 
 
@@ -52,5 +52,5 @@ def merge_chunks(chunk_files, merged_file):
         with open(fpath) as f:
             combined.extend(json.load(f))
     with open(merged_file, "w") as f:
-        json.dump(combined, f)
+        json.dump(combined, f,indent=2)
     return str(merged_file)

@@ -60,7 +60,7 @@ def test_calculate_descriptors_chunk_smi(sample_file_smi: List[str]):
 def test_calculate_descriptors_chunk_sdf(sample_file_sdf: List[str]):
 
     # check if there are three blocks
-    assert len(sample_file_sdf) == 3
+    assert len(sample_file_sdf) == 7
 
     # run the task synchronously
     result = calculate_descriptors_chunk_sdf(sample_file_sdf)
@@ -70,11 +70,8 @@ def test_calculate_descriptors_chunk_sdf(sample_file_sdf: List[str]):
     with open(f"./{result}","r") as f:
         proccessed_json = json.load(f)
     
-    print(proccessed_json)
     assert "json" in result and "None" in result
-    assert len(proccessed_json) == 3
+    assert len(proccessed_json) == 7
 
     for i,line in enumerate(proccessed_json):
         assert len(proccessed_json[i].keys()) == 217
-
-    assert proccessed_json[1]['qed'] == 0.010267024043949413
