@@ -41,7 +41,7 @@ def test_main(file_request_data):
 
     assert results["num_chunks"] == len(lines) / CHUNK_SIZE
 
-def test_get_job_status(client):
+def test_get_job_status_done(client):
     job_id = "12345678-1234-1234-1234-1234567890ab"
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
     merged_file.write_text("{}")
@@ -52,3 +52,15 @@ def test_get_job_status(client):
     data = response.json()
     assert data["status"] == "done"
     assert data["merged_file"] == str(merged_file)
+
+def test_get_job_status_pending(client):
+    job_id = "PENDING"
+
+    response = client.get(f"/v1/descriptors/{job_id}")
+    merged_file = RESULTS_DIR / f"{job_id}_merged.json"
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["status"] == "pending"
+    assert "merged_file" not in data
+
