@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 import json
 from celery import Celery
-import descriptors as all_ds
+import lib.descriptors as all_ds
 
 BROKER_URL = "redis://localhost:6379/0"
 BACKEND_URL = "redis://localhost:6379/1"

@@ -1,6 +1,6 @@
-# app/main.py
+# main.py
 from fastapi import FastAPI, UploadFile, File
-from celery_worker import calculate_descriptors_chunk, merge_chunks, celery_app
+from lib.celery_worker import calculate_descriptors_chunk, merge_chunks, celery_app
 from celery import chord
 from pathlib import Path
 import uuid
