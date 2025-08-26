@@ -46,23 +46,3 @@ def test_calculate_descriptors_chunk(sample_file):
         assert len(proccessed_lines[i].keys()) == 217
 
 
-
-
-# def test_descriptors_main(sample_file):
-#     response = client.post(
-#         "/v1/descriptors",
-#         files={"file": ("test.csv", sample_file, "text/csv")}
-#     )
-#     data = response.json()
-#     job_id = data["job_id"]
-
-#     # Get the response and the keys of the json response
-#     assert list(data.keys()) == ['job_id', "num_chunks"]
-#     assert response.status_code == 200
-    
-
-#     # Get task result (runs synchronously in eager mode)
-#     task = AsyncResult(job_id, app=celery_app)
-#     assert task.ready()
-#     result = task.result
-#     assert "descriptors" in result
