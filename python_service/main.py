@@ -9,7 +9,7 @@ import uuid
 
 app = FastAPI()
 
-CHUNK_SIZE = 50000
+CHUNK_SIZE = 500
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
