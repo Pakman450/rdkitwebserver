@@ -18,15 +18,28 @@ RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
 @celery_app.task
-def calculate_descriptors_chunk(smiles_chunk, job_id=None):
+def calculate_descriptors_chunk_smi(smiles_chunk, job_id=None):
     """
     Calculate descriptors for a chunk of SMILES and save JSON.
     """
-    result = all_ds.calc_all_descriptors(smiles_chunk)
+    result = all_ds.calc_all_descriptors_smi(smiles_chunk)
     chunk_file = RESULTS_DIR / f"{job_id}_{uuid.uuid4()}.json"
     with open(chunk_file, "w") as f:
         json.dump(result, f)
     return str(chunk_file)
+
+# TODO fix this up for SDF calculations
+@celery_app.task
+def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
+    """
+    Calculate descriptors for a chunk of SMILES and save JSON.
+    """
+    result = all_ds.calc_all_descriptors_sdf(sdf_chunk)
+    chunk_file = RESULTS_DIR / f"{job_id}_{uuid.uuid4()}.json"
+    with open(chunk_file, "w") as f:
+        json.dump(result, f)
+    return str(chunk_file)
+
 
 
 @celery_app.task

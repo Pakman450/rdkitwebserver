@@ -1,20 +1,28 @@
 # main.py
 from fastapi import FastAPI, UploadFile, File
-from lib.celery_worker import calculate_descriptors_chunk, merge_chunks, celery_app
+from lib.celery_worker import calculate_descriptors_chunk_smi, calculate_descriptors_chunk_sdf, merge_chunks, celery_app
+from lib.format_checker import get_file_format
+
 from celery import chord
 from pathlib import Path
 import uuid
 
 app = FastAPI()
 
-CHUNK_SIZE = 5
+CHUNK_SIZE = 50000
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
-@app.post("/v1/descriptors")
+# TODO: change the url where it specified descriptor computations
+# before descriptors
+@app.post("/v1/smi/descriptors")
 async def submit_descriptors_job(file: UploadFile = File(...)):
 
-    #read in smiles file
+
+    # check file format
+    print(get_file_format(file.filename))
+
+    # read in smiles file
     contents = await file.read()
     smiles_list = contents.decode("utf-8").splitlines()
 
@@ -23,7 +31,7 @@ async def submit_descriptors_job(file: UploadFile = File(...)):
     chunks = [smiles_list[i:i + CHUNK_SIZE] for i in range(0, len(smiles_list), CHUNK_SIZE)]
 
     # Create tasks for each chunk
-    chunk_tasks = [calculate_descriptors_chunk.s(chunk, job_id=job_id) for chunk in chunks]
+    chunk_tasks = [calculate_descriptors_chunk_smi.s(chunk, job_id=job_id) for chunk in chunks]
 
     # Define path for final merged file
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
@@ -35,7 +43,33 @@ async def submit_descriptors_job(file: UploadFile = File(...)):
     return {"job_id": job_id, "num_chunks": len(chunks)}
 
 
-@app.get("/v1/descriptors/{job_id}")
+#TODO make this batchable for sdf file format
+@app.post("/v1/sdf/descriptors")
+async def submit_descriptors_job(file: UploadFile = File(...)):
+
+    contents = await file.read()
+    sdf_text = contents.decode("utf-8")
+
+    # Split into molecule blocks
+    sdf_list = [block.strip() for block in sdf_text.split("$$$$") if block.strip()]
+
+    # Create job id and chunkify smiles file
+    job_id = str(uuid.uuid4())
+    chunks = [sdf_list[i:i + CHUNK_SIZE] for i in range(0, len(sdf_list), CHUNK_SIZE)]
+
+    # Create tasks for each chunk
+    chunk_tasks = [calculate_descriptors_chunk_sdf.s(chunk, job_id=job_id) for chunk in chunks]
+
+    # Define path for final merged file
+    merged_file = RESULTS_DIR / f"{job_id}_merged.json"
+
+    # Use chord: merge_chunks runs after all chunk tasks finish
+    # first argument of merge_chunks is injected automatically by chord(arg)
+    job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
+
+    return {"job_id": job_id, "num_chunks": len(chunks)}
+
+@app.get("/v1/job/{job_id}")
 def get_job_status(job_id: str):
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
     
