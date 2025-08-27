@@ -28,7 +28,6 @@ def calculate_descriptors_chunk_smi(smiles_chunk, job_id=None):
         json.dump(result, f)
     return str(chunk_file)
 
-# TODO fix this up for SDF calculations
 @celery_app.task
 def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
     """

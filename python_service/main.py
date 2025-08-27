@@ -7,7 +7,21 @@ from celery import chord
 from pathlib import Path
 import uuid
 
-app = FastAPI()
+from pydantic import BaseModel
+
+class JobResponse(BaseModel):
+    job_id: str
+    num_chunks: int
+
+class JobIdResponse(BaseModel):
+    job_id: str
+    num_chunks: str | None = None
+
+app = FastAPI(
+    title="Descriptor API",
+    description="Compute molecular descriptors in parallel using Celery.",
+    version="1.0.0"
+)
 
 # NOTE: this is set to 12500 because
 # current set up as 8 concurrency threads for workers 
@@ -16,11 +30,35 @@ CHUNK_SIZE = 12500
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
-# TODO: change the url where it specified descriptor computations
-# before descriptors
-@app.post("/v1/smi/descriptors")
-async def submit_descriptors_job(file: UploadFile = File(...)):
+@app.post("/v1/smi/descriptors", 
+            summary="Submit descriptors computation job",
+            description="""
+            Upload .smi/.txt file containing SMILES strings.
+            The service splits molecules into chunks, runs descriptor calculations in parallel,  
+            and returns a `job_id` you can use to check status.
+            """,
+            response_model=JobResponse,
+            responses={
+                200: {
+                    "description": "Job successfully submitted",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "job_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "num_chunks": 3
+                            }
+                        }
+                    },
+                }
+            },
+            )
+async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
+    """
+    Submit a SMILES file for descriptor calculation.
 
+    - **file**: Upload a `.smi` or `.txt` file with one SMILES per line.
+    - Returns a unique `job_id` and the number of chunks created.
+    """
 
     # check file format
     print(get_file_format(file.filename))
@@ -43,12 +81,33 @@ async def submit_descriptors_job(file: UploadFile = File(...)):
     # first argument of merge_chunks is injected automatically by chord(arg)
     job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
 
-    return {"job_id": job_id, "num_chunks": len(chunks)}
+    return JobResponse(job_id=job_id,num_chunks=len(chunks))
 
 
 #TODO make this batchable for sdf file format
-@app.post("/v1/sdf/descriptors")
-async def submit_descriptors_job(file: UploadFile = File(...)):
+@app.post("/v1/sdf/descriptors",
+            summary="Submit descriptors computation job",
+            description="""
+            Upload .sdf file containing sdf mol blocks.
+            The service splits molecules into chunks, runs descriptor calculations in parallel,  
+            and returns a `job_id` you can use to check status.
+            """,
+            response_model=JobResponse,
+            responses={
+                200: {
+                    "description": "Job successfully submitted",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "job_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "num_chunks": 3
+                            }
+                        }
+                    },
+                }
+            },
+            )
+async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
 
     contents = await file.read()
     sdf_text = contents.decode("utf-8")
@@ -70,18 +129,50 @@ async def submit_descriptors_job(file: UploadFile = File(...)):
     # first argument of merge_chunks is injected automatically by chord(arg)
     job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
 
-    return {"job_id": job_id, "num_chunks": len(chunks)}
+    return JobResponse(job_id=job_id,num_chunks=len(chunks))
 
-@app.get("/v1/job/{job_id}")
-def get_job_status(job_id: str):
+@app.get("/v1/job/{job_id}",
+            summary="get status for a job id",
+            description="""
+                Submit a job id that you have received from job submission, 
+                and get a status for that submitted job.
+            """,
+            response_model=JobIdResponse,
+            responses={
+                200: {
+                    "description": "Job successfully submitted",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "status": "done",
+                                "merged_file": "123e4567-e89b-12d3-a456-426614174000_merged.json"
+                            }
+                        }
+                    },
+                }
+            },
+        )
+def get_job_status(job_id: str)->JobIdResponse:
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
     
     # Check if merge task result exists in Celery backend
     # Find the chord result if needed
     if merged_file.exists():
-        return {"status": "done", "merged_file": str(merged_file)}
+        return JobIdResponse(status="done", merged_file=str(merged_file))
     
     # Otherwise, check pending chunk tasks
     # Celery stores task states in backend
     # This is optional; for simplicity, we just check if merged file exists
-    return {"status": "pending"}
+    return JobIdResponse(status="pending", merged_file=None)
+
+
+
+@app.get("/ping")
+def ping():
+    """
+    Check if the service is alive.
+
+    Returns:
+        dict: `{"message": "pong"}`
+    """
+    return {"message": "pong"}
