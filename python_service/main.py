@@ -9,7 +9,10 @@ import uuid
 
 app = FastAPI()
 
-CHUNK_SIZE = 500
+# NOTE: this is set to 12500 because
+# current set up as 8 concurrency threads for workers 
+# Also, set up for 100K SDF mols
+CHUNK_SIZE = 12500
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
