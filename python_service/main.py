@@ -6,6 +6,7 @@ from lib.format_checker import get_file_format
 from celery import chord
 from pathlib import Path
 import uuid
+import aiofiles
 
 from pydantic import BaseModel
 
@@ -13,9 +14,23 @@ class JobResponse(BaseModel):
     job_id: str
     num_chunks: int
 
+
 class JobIdResponse(BaseModel):
-    job_id: str
-    num_chunks: str | None = None
+    status: str
+    merged_file: str | None = None
+
+
+async def stream_lines(file: UploadFile):
+    while True:
+        line_bytes = await file.read()
+        if not line_bytes:
+            break
+        line = line_bytes.decode().strip()
+        if not line:
+            continue
+        yield line   # yields one line at a time
+        # once the caller consumes it, it's gone from memory
+
 
 app = FastAPI(
     title="Descriptor API",
@@ -26,7 +41,7 @@ app = FastAPI(
 # NOTE: this is set to 12500 because
 # current set up as 8 concurrency threads for workers 
 # Also, set up for 100K SDF mols
-CHUNK_SIZE = 12500
+CHUNK_SIZE = 444958
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
@@ -52,7 +67,7 @@ RESULTS_DIR.mkdir(exist_ok=True)
                 }
             },
             )
-async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
+async def submit_smi_descriptors(file: UploadFile = File(...)) -> JobResponse:
     """
     Submit a SMILES file for descriptor calculation.
 
@@ -83,6 +98,62 @@ async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
 
     return JobResponse(job_id=job_id,num_chunks=len(chunks))
 
+@app.post("/v1/smi/chunk/descriptors", 
+            summary="Submit descriptors computation job via chunks",
+            description="""
+            Upload .smi/.txt file containing SMILES strings.
+            The service splits molecules into chunks, runs descriptor calculations in parallel,  
+            and returns a `job_id` you can use to check status.
+            """,
+            response_model=JobResponse,
+            responses={
+                200: {
+                    "description": "Job successfully submitted",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "job_id": "123e4567-e89b-12d3-a456-426614174000",
+                                "num_chunks": 3
+                            }
+                        }
+                    },
+                }
+            },
+            )
+async def submit_smi_chunk_descriptors(file: UploadFile = File(...)) -> JobResponse:
+    job_id = str(uuid.uuid4())
+    merged_file = RESULTS_DIR / f"{job_id}_merged.json"
+
+    chunk_tasks = []
+    buffer = []
+    num_chunks = 0
+
+    # Read uploaded file line by line
+    async for line in stream_lines(file):
+    
+        if not line:
+            continue
+
+        buffer.append(line)
+
+        print(len(buffer))
+        
+        if len(buffer) >= CHUNK_SIZE:
+            print("hehe")
+            chunk_tasks.append(calculate_descriptors_chunk_smi.s(buffer, job_id=job_id))
+            num_chunks += 1
+            buffer = []
+
+    if buffer:
+
+        chunk_tasks.append(calculate_descriptors_chunk_smi.s(buffer, job_id=job_id))
+        num_chunks += 1
+
+    if chunk_tasks:
+        chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
+
+    return JobResponse(job_id=job_id, num_chunks=num_chunks)
+
 
 #TODO make this batchable for sdf file format
 @app.post("/v1/sdf/descriptors",
@@ -107,7 +178,7 @@ async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
                 }
             },
             )
-async def submit_descriptors_job(file: UploadFile = File(...)) -> JobResponse:
+async def submit_sdf_descriptors(file: UploadFile = File(...)) -> JobResponse:
 
     contents = await file.read()
     sdf_text = contents.decode("utf-8")

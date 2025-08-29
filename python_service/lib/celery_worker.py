@@ -25,7 +25,7 @@ def calculate_descriptors_chunk_smi(smiles_chunk, job_id=None):
     result = all_ds.calc_all_descriptors_smi(smiles_chunk)
     chunk_file = RESULTS_DIR / f"{job_id}_{uuid.uuid4()}.json"
     with open(chunk_file, "w") as f:
-        json.dump(result, f)
+        json.dump(result, f, indent=2)
     return str(chunk_file)
 
 @celery_app.task
