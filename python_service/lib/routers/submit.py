@@ -5,9 +5,10 @@ import uuid
 
 from lib.schemas import JobResponse
 from lib.stream_smi import stream_smi_lines
+from lib.stream_sdf import stream_sdf_lines
 from lib.celery_worker import calculate_descriptors_chunk_smi, calculate_descriptors_chunk_sdf, merge_chunks, celery_app
 router = APIRouter()
-CHUNK_SIZE = 500000
+CHUNK_SIZE = 5000
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
@@ -90,24 +91,34 @@ async def submit_smi_chunk_descriptors(file: UploadFile = File(...)) -> JobRespo
             )
 async def submit_sdf_descriptors(file: UploadFile = File(...)) -> JobResponse:
 
-    contents = await file.read()
-    sdf_text = contents.decode("utf-8")
 
-    # Split into molecule blocks
-    sdf_list = [block.strip() for block in sdf_text.split("$$$$") if block.strip()]
-
-    # Create job id and chunkify smiles file
     job_id = str(uuid.uuid4())
-    chunks = [sdf_list[i:i + CHUNK_SIZE] for i in range(0, len(sdf_list), CHUNK_SIZE)]
-
-    # Create tasks for each chunk
-    chunk_tasks = [calculate_descriptors_chunk_sdf.s(chunk, job_id=job_id) for chunk in chunks]
-
-    # Define path for final merged file
     merged_file = RESULTS_DIR / f"{job_id}_merged.json"
 
-    # Use chord: merge_chunks runs after all chunk tasks finish
-    # first argument of merge_chunks is injected automatically by chord(arg)
-    job_result = chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
+    chunk_tasks = []
+    buffer = []
+    num_chunks = 0
 
-    return JobResponse(job_id=job_id,num_chunks=len(chunks))
+    # Read uploaded file line by line
+    async for sdf_mol in stream_sdf_lines(file):
+    
+        if not sdf_mol:
+            continue
+
+        buffer.append(sdf_mol)
+        
+        if len(buffer) >= CHUNK_SIZE:
+
+            chunk_tasks.append(calculate_descriptors_chunk_sdf.s(buffer, job_id=job_id))
+            num_chunks += 1
+            buffer = []
+
+    if buffer:
+
+        chunk_tasks.append(calculate_descriptors_chunk_sdf.s(buffer, job_id=job_id))
+        num_chunks += 1
+
+    if chunk_tasks:
+        chord(chunk_tasks)(merge_chunks.s(str(merged_file)))
+
+    return JobResponse(job_id=job_id, num_chunks=num_chunks)
