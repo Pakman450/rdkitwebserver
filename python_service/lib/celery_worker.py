@@ -40,16 +40,29 @@ def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
     return str(chunk_file)
 
 
-
 @celery_app.task
 def merge_chunks(chunk_files, merged_file):
     """
-    Merge multiple JSON chunk files into a single JSON.
+    Merge multiple JSON chunk files into a single JSON with indentation,
+    without loading all chunks into RAM.
     """
-    combined = []
-    for fpath in chunk_files:
-        with open(fpath) as f:
-            combined.extend(json.load(f))
-    with open(merged_file, "w") as f:
-        json.dump(combined, f,indent=2)
+    with open(merged_file, "w") as out_f:
+        out_f.write("[\n")
+        first = True
+
+        for fpath in chunk_files:
+            with open(fpath) as f:
+                data = json.load(f)
+                for item in data:
+                    if not first:
+                        out_f.write(",\n")
+                    # Pretty-print individual item with 2-space indent
+                    item_str = json.dumps(item, indent=2)
+                    # Add extra spaces to align with outer array
+                    indented_item = "  " + item_str.replace("\n", "\n  ")
+                    out_f.write(indented_item)
+                    first = False
+
+        out_f.write("\n]\n")
+
     return str(merged_file)

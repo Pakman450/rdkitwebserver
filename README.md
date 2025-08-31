@@ -83,3 +83,21 @@ curl "http://localhost:8000/v1/job/JOBID"
 
 where if completed, will return results
 
+### Ensure these criteria before making changes
+-[] add test cases
+
+-[] submit benchmarking
+
+
+
+# Benchmarking
+## no aiofiles
+### 444957 smiles divided up by 8 threads
+time: 1358 sec (55620 chunk size)
+### 444957 smiles all computed under 1 thread
+time: 3162 sec (444958 chunk size) 
+
+### 444957 smiles divided up by 8 threads line by line
+time: 1652 sec (55620 chunk size)
+### 444957 smiles all computed under 1 thread line by line
+time: 3247 sec (444958 chunk size) 
