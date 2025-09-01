@@ -4,6 +4,9 @@ from pathlib import Path
 import json
 from celery import Celery
 import lib.descriptors as all_ds
+import os
+import csv
+
 
 BROKER_URL = "redis://localhost:6379/0"
 BACKEND_URL = "redis://localhost:6379/1"
@@ -46,6 +49,12 @@ def merge_chunks(chunk_files, merged_file):
     Merge multiple JSON chunk files into a single JSON with indentation,
     without loading all chunks into RAM.
     """
+
+    basename, extension = os.path.splitext(merged_file)
+    csv_f = open(f"{basename}.csv", "w+")
+
+
+
     with open(merged_file, "w") as out_f:
         out_f.write("[\n")
         first = True
@@ -53,9 +62,18 @@ def merge_chunks(chunk_files, merged_file):
         for fpath in chunk_files:
             with open(fpath) as f:
                 data = json.load(f)
+
+                if first:
+                    csv_writer = csv.DictWriter(csv_f, data[0].keys())
+                    csv_writer.writeheader()
+                
+
                 for item in data:
                     if not first:
                         out_f.write(",\n")
+                    
+                    csv_writer.writerow(item)
+                    
                     # Pretty-print individual item with 2-space indent
                     item_str = json.dumps(item, indent=2)
                     # Add extra spaces to align with outer array
