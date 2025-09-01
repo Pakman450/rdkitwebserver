@@ -6,6 +6,7 @@ from celery import Celery
 import lib.descriptors as all_ds
 import os
 import csv
+from typing import List
 
 
 BROKER_URL = "redis://localhost:6379/0"
@@ -21,7 +22,7 @@ RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 
 @celery_app.task
-def calculate_descriptors_chunk_smi(smiles_chunk, job_id=None):
+def calculate_descriptors_chunk_smi(smiles_chunk: List[str], job_id: str =None) -> str:
     """
     Calculate descriptors for a chunk of SMILES and save JSON.
     """
@@ -32,7 +33,7 @@ def calculate_descriptors_chunk_smi(smiles_chunk, job_id=None):
     return str(chunk_file)
 
 @celery_app.task
-def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
+def calculate_descriptors_chunk_sdf(sdf_chunk: List[str], job_id: str =None) -> str:
     """
     Calculate descriptors for a chunk of SMILES and save JSON.
     """
@@ -44,10 +45,11 @@ def calculate_descriptors_chunk_sdf(sdf_chunk, job_id=None):
 
 
 @celery_app.task
-def merge_chunks(chunk_files, merged_file):
+def merge_chunks(chunk_files: List[str], merged_file: str) -> str:
     """
     Merge multiple JSON chunk files into a single JSON with indentation,
-    without loading all chunks into RAM.
+    without loading all chunks into RAM. Also, the output also writes
+    a csv file. s
     """
 
     basename, extension = os.path.splitext(merged_file)
