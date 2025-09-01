@@ -101,3 +101,11 @@ time: 3162 sec (444958 chunk size)
 time: 1652 sec (55620 chunk size)
 ### 444957 smiles all computed under 1 thread line by line
 time: 3247 sec (444958 chunk size) 
+
+
+
+### 444957 sdf mols divided up by 8 threads line by line
+time: 1592 sec (5000 chunk size)
+
+### 444957 sdf mols divided up by 8 threads line by line
+time: n/a crashed out due to oom (444958 chunk size)
