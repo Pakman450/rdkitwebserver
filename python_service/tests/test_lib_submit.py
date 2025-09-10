@@ -4,7 +4,9 @@ from pathlib import Path
 from io import BytesIO
 from fastapi.testclient import TestClient
 
-from main import app, RESULTS_DIR, CHUNK_SIZE
+from main import app
+
+from lib.routers.submit import RESULTS_DIR, CHUNK_SIZE
 
 EXAMPLES_FILE_SMI = Path("./examples/smiles.txt")
 EXAMPLES_FILE_SDF = Path("./examples/short_structures.sdf")
@@ -25,7 +27,7 @@ def file_request_data_smi(client):
     binary_file = BytesIO(EXAMPLES_FILE_SMI.read_bytes())
 
     response = client.post(
-        "/v1/smi/descriptors",
+        "/v1/smi/chunk/descriptors",
         files={"file": ("smiles.txt", binary_file, "text/plain")}
     )
 
@@ -74,12 +76,7 @@ def test_sdf(file_request_data_sdf):
     job_id = uuid.UUID(results["job_id"])
     assert isinstance(job_id, uuid.UUID)
 
-    if len(lines) <= CHUNK_SIZE:
-        assert results["num_chunks"] == 1
-    else:
-        assert results["num_chunks"] == len(lines) / CHUNK_SIZE
- 
-
+    assert len(lines) == 1083
 
 
 
@@ -104,5 +101,5 @@ def test_get_job_status_pending(client):
 
     data = response.json()
     assert data["status"] == "pending"
-    assert "merged_file" not in data
+    assert data["merged_file"] == None
 

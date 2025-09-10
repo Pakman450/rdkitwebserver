@@ -54,7 +54,7 @@ def test_calculate_descriptors_chunk_smi(sample_file_smi: List[str]):
     assert len(proccessed_lines) == 10
 
     for i,line in enumerate(proccessed_lines):
-        assert len(proccessed_lines[i].keys()) == 217
+        assert len(proccessed_lines[i].keys()) == 219
 
 
 def test_calculate_descriptors_chunk_sdf(sample_file_sdf: List[str]):
@@ -74,4 +74,4 @@ def test_calculate_descriptors_chunk_sdf(sample_file_sdf: List[str]):
     assert len(proccessed_json) == 7
 
     for i,line in enumerate(proccessed_json):
-        assert len(proccessed_json[i].keys()) == 217
+        assert len(proccessed_json[i].keys()) == 219

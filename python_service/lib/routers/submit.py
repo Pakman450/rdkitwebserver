@@ -8,7 +8,8 @@ from lib.stream_smi import stream_smi_lines
 from lib.stream_sdf import stream_sdf_lines
 from lib.celery_worker import calculate_descriptors_chunk_smi, calculate_descriptors_chunk_sdf, merge_chunks, celery_app
 router = APIRouter()
-CHUNK_SIZE = 5000
+
+CHUNK_SIZE = 5
 RESULTS_DIR = Path("./results")
 RESULTS_DIR.mkdir(exist_ok=True)
 

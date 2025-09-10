@@ -9,8 +9,10 @@ import csv
 from typing import List
 
 
-BROKER_URL = "redis://localhost:6379/0"
-BACKEND_URL = "redis://localhost:6379/1"
+#BROKER_URL = "redis://localhost:6379/0"
+
+BROKER_URL ="pyamqp://guest:guest@localhost//",  # RabbitMQ broker
+BACKEND_URL = "redis://localhost:6379/1" # redis backend
 
 celery_app = Celery(
     "tasks",
