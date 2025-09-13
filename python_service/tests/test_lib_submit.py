@@ -66,6 +66,19 @@ def test_smi(file_request_data_smi):
     else:
         assert results["num_chunks"] == len(lines) / CHUNK_SIZE
 
+def test_smi_empty_file(client):
+    # Test uploading an empty SMILES file
+    empty_file = BytesIO(b"")
+
+    response = client.post(
+        "/v1/smi/chunk/descriptors",
+        files={"file": ("empty.txt", empty_file, "text/plain")}
+    )
+    
+    # returns 200 but with 0 chunks
+    assert response.status_code == 200
+    assert response.json()["num_chunks"] == 0
+
 def test_sdf(file_request_data_sdf):
     response = file_request_data_sdf["response"]
     lines = file_request_data_sdf["lines"]
@@ -77,8 +90,6 @@ def test_sdf(file_request_data_sdf):
     assert isinstance(job_id, uuid.UUID)
 
     assert len(lines) == 1083
-
-
 
 def test_get_job_status_done(client):
     job_id = "12345678-1234-1234-1234-1234567890ab"
